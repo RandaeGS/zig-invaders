@@ -1,71 +1,39 @@
 const std = @import("std");
 const Io = std.Io;
+const rl = @import("raylib");
+const rg = @import("raygui");
 
-const zig_invaders = @import("zig_invaders");
+const Rectangle = struct {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
 
-pub fn main(init: std.process.Init) !void {
-    // Prints to stderr, unbuffered, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
-
-    // This is appropriate for anything that lives as long as the process.
-    const arena: std.mem.Allocator = init.arena.allocator();
-
-    // Accessing command line arguments:
-    const args = try init.minimal.args.toSlice(arena);
-    for (args) |arg| {
-        std.log.info("arg: {s}", .{arg});
+    pub fn intersects(self: Rectangle, other: Rectangle) bool {
+        return self.x < other.x + other.width and
+            self.x + self.width > other.x and
+            self.y < other.y + other.height and
+            self.y + self.height > other.y;
     }
+};
 
-    // In order to do I/O operations need an `Io` instance.
-    const io = init.io;
+const GameConfig = struct { screenWidth: i32, screenHeight: i32, playerWidth: f32, playerHeight: f32, playerStartY: f32, bulletWidth: f32, bulletHeight: f32, shieldStartX: f32, shieldY: f32, shieldWidth: f32, shieldHeight: f32, shieldSpacing: f32, invaderStartX: f32, invaderStartY: f32, invaderWidth: f32, invaderHeight: f32, invaderSpacingX: f32, invaderSpacingY: f32 };
 
-    // Stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout_file_writer: Io.File.Writer = .init(.stdout(), io, &stdout_buffer);
-    const stdout_writer = &stdout_file_writer.interface;
+pub fn main() !void {
+    const screenWidth = 800;
+    const screenHeight = 450;
 
-    try zig_invaders.printAnotherMessage(stdout_writer);
+    rl.initWindow(screenWidth, screenHeight, "Greeting");
+    defer rl.closeWindow();
 
-    try stdout_writer.flush(); // Don't forget to flush!
-}
+    rl.setTargetFPS(60);
 
-test "simple test" {
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(i32) = .empty;
-    defer list.deinit(gpa); // Try commenting this out and see if zig detects the memory leak!
-    try list.append(gpa, 42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
+    while (!rl.windowShouldClose()) {
+        rl.beginDrawing();
+        defer rl.endDrawing();
 
-test "fuzz example" {
-    try std.testing.fuzz({}, testOne, .{});
-}
+        rl.clearBackground(.black);
 
-fn testOne(context: void, smith: *std.testing.Smith) !void {
-    _ = context;
-    // Try passing `--fuzz` to `zig build test` and see if it manages to fail this test case!
-
-    const gpa = std.testing.allocator;
-    var list: std.ArrayList(u8) = .empty;
-    defer list.deinit(gpa);
-    while (!smith.eos()) switch (smith.value(enum { add_data, dup_data })) {
-        .add_data => {
-            const slice = try list.addManyAsSlice(gpa, smith.value(u4));
-            smith.bytes(slice);
-        },
-        .dup_data => {
-            if (list.items.len == 0) continue;
-            if (list.items.len > std.math.maxInt(u32)) return error.SkipZigTest;
-            const len = smith.valueRangeAtMost(u32, 1, @min(32, list.items.len));
-            const off = smith.valueRangeAtMost(u32, 0, @intCast(list.items.len - len));
-            try list.appendSlice(gpa, list.items[off..][0..len]);
-            try std.testing.expectEqualSlices(
-                u8,
-                list.items[off..][0..len],
-                list.items[list.items.len - len ..],
-            );
-        },
-    };
+        rl.drawText("Hello, World!", screenWidth / 3, screenHeight / 2, 20, .green);
+    }
 }
