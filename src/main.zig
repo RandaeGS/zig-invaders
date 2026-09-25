@@ -17,7 +17,44 @@ const Rectangle = struct {
     }
 };
 
-const GameConfig = struct { screenWidth: i32, screenHeight: i32, playerWidth: f32, playerHeight: f32, playerStartY: f32, bulletWidth: f32, bulletHeight: f32, shieldStartX: f32, shieldY: f32, shieldWidth: f32, shieldHeight: f32, shieldSpacing: f32, invaderStartX: f32, invaderStartY: f32, invaderWidth: f32, invaderHeight: f32, invaderSpacingX: f32, invaderSpacingY: f32 };
+const GameConfig = struct {
+    screenWidth: i32,
+    screenHeight: i32,
+    playerWidth: f32,
+    playerHeight: f32,
+    playerStartY: f32,
+    bulletWidth: f32,
+    bulletHeight: f32,
+    shieldStartX: f32,
+    shieldY: f32,
+    shieldWidth: f32,
+    shieldHeight: f32,
+    shieldSpacing: f32,
+    invaderStartX: f32,
+    invaderStartY: f32,
+    invaderWidth: f32,
+    invaderHeight: f32,
+    invaderSpacingX: f32,
+    invaderSpacingY: f32,
+};
+
+const Player = struct {
+    positionX: f32,
+    positionY: f32,
+    width: f32,
+    height: f32,
+    speed: f32,
+
+    pub fn init(positionX: f32, positionY: f32, width: f32, height: f32) @This() {
+        return .{
+            .positionX = positionX,
+            .positionY = positionY,
+            .width = width,
+            .height = height,
+            .speed = 5.0,
+        };
+    }
+};
 
 pub fn main() !void {
     const screenWidth = 800;
@@ -25,6 +62,16 @@ pub fn main() !void {
 
     rl.initWindow(screenWidth, screenHeight, "Greeting");
     defer rl.closeWindow();
+
+    const playerWidth = 50.0;
+    const playerHeight = 30.0;
+
+    var player = Player.init(
+        @as(f32, @floatFromInt(screenWidth)) / 2 - playerWidth / 2,
+        @as(f32, @floatFromInt(screenHeight)) - 60.0,
+        playerWidth,
+        playerHeight,
+    );
 
     rl.setTargetFPS(60);
 
