@@ -54,6 +54,35 @@ const Player = struct {
             .speed = 5.0,
         };
     }
+
+    pub fn update(self: *@This()) void {
+        if (rl.isKeyDown(rl.KeyboardKey.right)) {
+            self.positionX += self.speed;
+        }
+
+        if (rl.isKeyDown(rl.KeyboardKey.left)) {
+            self.positionX -= self.speed;
+        }
+    }
+
+    pub fn getRect(self: @This()) Rectangle {
+        return .{
+            .x = self.positionX,
+            .y = self.positionY,
+            .width = self.width,
+            .height = self.height,
+        };
+    }
+
+    pub fn draw(self: @This()) void {
+        rl.drawRectangle(
+            @intFromFloat(self.positionX),
+            @intFromFloat(self.positionY),
+            @intFromFloat(self.width),
+            @intFromFloat(self.height),
+            rl.Color.green,
+        );
+    }
 };
 
 pub fn main() !void {
@@ -80,7 +109,8 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.clearBackground(.black);
-
+        player.update();
+        player.draw();
         rl.drawText("Hello, World!", screenWidth / 3, screenHeight / 2, 20, .green);
     }
 }
