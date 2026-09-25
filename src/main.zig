@@ -171,10 +171,12 @@ pub fn main() !void {
 
         if (rl.isKeyPressed(rl.KeyboardKey.space)) {
             for (&bullets) |*bullet| {
-                bullet.positionX = player.positionX + player.width / 2 - bullet.width / 2;
-                bullet.positionY = player.positionY;
-                bullet.active = true;
-                break;
+                if (!bullet.active) {
+                    bullet.positionX = player.positionX + player.width / 2 - bullet.width / 2;
+                    bullet.positionY = player.positionY;
+                    bullet.active = true;
+                    break;
+                }
             }
         }
 
