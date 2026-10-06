@@ -178,6 +178,15 @@ const Bullet = struct {
             );
         }
     }
+
+    pub fn getRect(self: @This()) Rectangle {
+        return .{
+            .x = self.positionX,
+            .y = self.positionY,
+            .width = self.width,
+            .height = self.height,
+        };
+    }
 };
 
 pub fn main() !void {
@@ -201,6 +210,8 @@ pub fn main() !void {
     const maxBullets = 10;
     const bulletWidth = 4.0;
     const bulletHeight = 10.0;
+
+    var score: i32 = 0;
 
     var bullets: [maxBullets]Bullet = undefined;
     for (&bullets) |*bullet| {
@@ -253,6 +264,23 @@ pub fn main() !void {
             bullet.update();
         }
 
+        for (&bullets) |*bullet| {
+            if (bullet.active) {
+                for (&invaders) |*row| {
+                    for (row) |*invader| {
+                        if (invader.alive) {
+                            if (bullet.getRect().intersects(invader.getRect())) {
+                                bullet.active = false;
+                                invader.alive = false;
+                                score += 10;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         moveTimer += 1;
         if (moveTimer >= invaderMoveDelay) {
             moveTimer = 0;
@@ -297,5 +325,8 @@ pub fn main() !void {
                 invader.draw();
             }
         }
+
+        const scoreText = rl.textFormat("Score: %d", .{score});
+        rl.drawText(scoreText, 4, rl.getScreenHeight() - 20, 20, rl.Color.dark_green);
     }
 }
