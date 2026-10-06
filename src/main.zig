@@ -266,6 +266,7 @@ pub fn main() !void {
     const bulletHeight = 10.0;
 
     var score: i32 = 0;
+    var game_over: bool = false;
 
     var bullets: [maxBullets]Bullet = undefined;
     for (&bullets) |*bullet| {
@@ -306,6 +307,20 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.clearBackground(.black);
+
+        if (game_over) {
+            rl.drawText("GAME OVER", 270, 250, 40, rl.Color.red);
+            const scoreText = rl.textFormat("Score: %d", .{score});
+            rl.drawText(scoreText, 4, rl.getScreenHeight() - 20, 20, rl.Color.dark_green);
+            rl.drawText("Press ENTER to play again or ESC to quit", 180, 360, 20, rl.Color.green);
+
+            if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
+                game_over = false;
+            }
+
+            continue;
+        }
+
         player.update();
 
         if (rl.isKeyPressed(rl.KeyboardKey.space)) {
@@ -342,6 +357,10 @@ pub fn main() !void {
 
         for (&enemy_bullets) |*bullet| {
             bullet.update(screenHeight);
+            if (bullet.active and bullet.getRect().intersects(player.getRect())) {
+                bullet.active = false;
+                game_over = true;
+            }
         }
         enemy_shoot_timer += 1;
         if (enemy_shoot_timer >= enemyShootDelay) {
