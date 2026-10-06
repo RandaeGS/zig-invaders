@@ -189,6 +189,55 @@ const Bullet = struct {
     }
 };
 
+const EnemyBullet = struct {
+    positionX: f32,
+    positionY: f32,
+    width: f32,
+    height: f32,
+    speed: f32,
+    active: bool,
+
+    pub fn init(positionX: f32, positionY: f32, width: f32, height: f32) @This() {
+        return .{
+            .positionX = positionX,
+            .positionY = positionY,
+            .width = width,
+            .height = height,
+            .speed = 10.0,
+            .active = false,
+        };
+    }
+    pub fn update(self: *@This(), screen_height: i32) void {
+        if (self.active) {
+            self.positionY += self.speed;
+            if (self.positionY > @as(f32, @floatFromInt(screen_height))) {
+                self.active = false;
+            }
+        }
+    }
+
+    pub fn draw(self: @This()) void {
+        if (self.active) {
+            rl.drawRectangle(
+                @intFromFloat(self.positionX),
+                @intFromFloat(self.positionY),
+                @intFromFloat(self.width),
+                @intFromFloat(self.height),
+                rl.Color.yellow,
+            );
+        }
+    }
+
+    pub fn getRect(self: @This()) Rectangle {
+        return .{
+            .x = self.positionX,
+            .y = self.positionY,
+            .width = self.width,
+            .height = self.height,
+        };
+    }
+};
+
 pub fn main() !void {
     const screenWidth = 800;
     const screenHeight = 450;
@@ -207,7 +256,12 @@ pub fn main() !void {
     var invaderDirection: f32 = 1.0;
     var moveTimer: i32 = 0;
 
+    const enemyShootDelay = 60;
+    const enemyShootChance = 5;
+    var enemy_shoot_timer: i32 = 0;
+
     const maxBullets = 10;
+    const maxEnemyBullets = 10;
     const bulletWidth = 4.0;
     const bulletHeight = 10.0;
 
@@ -216,6 +270,11 @@ pub fn main() !void {
     var bullets: [maxBullets]Bullet = undefined;
     for (&bullets) |*bullet| {
         bullet.* = Bullet.init(0, 0, bulletWidth, bulletHeight);
+    }
+
+    var enemy_bullets: [maxEnemyBullets]EnemyBullet = undefined;
+    for (&enemy_bullets) |*bullet| {
+        bullet.* = EnemyBullet.init(0, 0, bulletWidth, bulletHeight);
     }
 
     var invaders: [invaderRows][invaderCols]Invader = undefined;
@@ -281,6 +340,29 @@ pub fn main() !void {
             }
         }
 
+        for (&enemy_bullets) |*bullet| {
+            bullet.update(screenHeight);
+        }
+        enemy_shoot_timer += 1;
+        if (enemy_shoot_timer >= enemyShootDelay) {
+            enemy_shoot_timer = 0;
+            for (&invaders) |*row| {
+                for (row) |*invader| {
+                    if (invader.alive and rl.getRandomValue(0, 100) < enemyShootChance) {
+                        for (&enemy_bullets) |*bullet| {
+                            if (!bullet.active) {
+                                bullet.positionX = invader.positionX + invader.width / 2 - bullet.width / 2;
+                                bullet.positionY = invader.positionY + invader.height;
+                                bullet.active = true;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         moveTimer += 1;
         if (moveTimer >= invaderMoveDelay) {
             moveTimer = 0;
@@ -324,6 +406,10 @@ pub fn main() !void {
             for (row) |*invader| {
                 invader.draw();
             }
+        }
+
+        for (&enemy_bullets) |*bullet| {
+            bullet.draw();
         }
 
         const scoreText = rl.textFormat("Score: %d", .{score});
