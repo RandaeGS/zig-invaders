@@ -278,9 +278,51 @@ const Shield = struct {
     }
 };
 
+fn resetGame(
+    player: *Player,
+    bullets: []Bullet,
+    enemy_bullets: []EnemyBullet,
+    shields: []Shield,
+    invaders: anytype,
+    invader_direction: *f32,
+    score: *i32,
+    config: GameConfig,
+) void {
+    score.* = 0;
+    player.* = Player.init(
+        @as(f32, @floatFromInt(config.screenWidth)) / 2 - config.playerWidth / 2,
+        @as(f32, @floatFromInt(config.screenHeight)) - 60.0,
+        config.playerWidth,
+        config.playerHeight,
+    );
+    for (bullets) |*bullet| {
+        bullet.active = false;
+    }
+    for (enemy_bullets) |*bullet| {
+        bullet.active = false;
+    }
+    for (shields, 0..) |*shield, i| {
+        const x = config.shieldStartX + @as(f32, @floatFromInt(i)) * config.shieldSpacing;
+        shield.* = Shield.init(x, config.shieldY, config.shieldWidth, config.shieldHeight);
+    }
+    for (invaders, 0..) |*row, i| {
+        for (row, 0..) |*invader, j| {
+            const x = config.invaderStartX + @as(f32, @floatFromInt(j)) * config.invaderSpacingX;
+            const y = config.invaderStartY + @as(f32, @floatFromInt(i)) * config.invaderSpacingY;
+            invader.* = Invader.init(x, y, config.invaderWidth, config.invaderHeight);
+        }
+    }
+
+    invader_direction.* = 1.0;
+}
+
 pub fn main() !void {
     const screenWidth = 800;
     const screenHeight = 600;
+
+    const playerStartY = @as(f32, @floatFromInt(screenHeight)) - 60.0;
+    const playerWidth = 50.0;
+    const playerHeight = 30.0;
 
     const invaderRows = 5;
     const invaderCols = 11;
@@ -313,7 +355,30 @@ pub fn main() !void {
     const bulletHeight = 10.0;
 
     var score: i32 = 0;
+    var invader_direction: f32 = 1.0;
     var game_over: bool = false;
+    var game_won: bool = false;
+
+    const config = GameConfig{
+        .screenWidth = screenWidth,
+        .screenHeight = screenHeight,
+        .playerStartY = playerStartY,
+        .playerWidth = playerWidth,
+        .playerHeight = playerHeight,
+        .bulletWidth = bulletWidth,
+        .bulletHeight = bulletHeight,
+        .shieldStartX = shieldStartX,
+        .shieldY = shieldY,
+        .shieldWidth = shieldWidth,
+        .shieldHeight = shieldHeight,
+        .shieldSpacing = shieldSpacing,
+        .invaderStartX = invaderStartX,
+        .invaderStartY = invaderStartY,
+        .invaderWidth = invaderWidth,
+        .invaderHeight = invaderHeight,
+        .invaderSpacingX = invaderSpacingX,
+        .invaderSpacingY = invaderSpacingY,
+    };
 
     var bullets: [maxBullets]Bullet = undefined;
     for (&bullets) |*bullet| {
@@ -343,9 +408,6 @@ pub fn main() !void {
     rl.initWindow(screenWidth, screenHeight, "Greeting");
     defer rl.closeWindow();
 
-    const playerWidth = 50.0;
-    const playerHeight = 30.0;
-
     var player = Player.init(
         @as(f32, @floatFromInt(screenWidth)) / 2 - playerWidth / 2,
         @as(f32, @floatFromInt(screenHeight)) - 60.0,
@@ -362,6 +424,7 @@ pub fn main() !void {
         rl.clearBackground(.black);
 
         if (game_over) {
+            std.debug.print("Perdido", .{});
             rl.drawText("GAME OVER", 270, 250, 40, rl.Color.red);
             const scoreText = rl.textFormat("Score: %d", .{score});
             rl.drawText(scoreText, 4, rl.getScreenHeight() - 20, 20, rl.Color.dark_green);
@@ -369,11 +432,45 @@ pub fn main() !void {
 
             if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
                 game_over = false;
+                resetGame(
+                    &player,
+                    &bullets,
+                    &enemy_bullets,
+                    &shields,
+                    &invaders,
+                    &invader_direction,
+                    &score,
+                    config,
+                );
             }
 
             continue;
         }
 
+        if (game_won) {
+            rl.drawText("YOU WIN!", 270, 250, 40, rl.Color.gold);
+            const scoreText = rl.textFormat("Score: %d", .{score});
+            rl.drawText(scoreText, 4, rl.getScreenHeight() - 20, 20, rl.Color.dark_green);
+            rl.drawText("Press ENTER to play again or ESC to quit", 180, 360, 20, rl.Color.green);
+
+            if (rl.isKeyPressed(rl.KeyboardKey.enter)) {
+                game_won = false;
+                resetGame(
+                    &player,
+                    &bullets,
+                    &enemy_bullets,
+                    &shields,
+                    &invaders,
+                    &invader_direction,
+                    &score,
+                    config,
+                );
+            }
+
+            continue;
+        }
+
+        // UPDATE
         player.update();
 
         if (rl.isKeyPressed(rl.KeyboardKey.space)) {
@@ -489,6 +586,30 @@ pub fn main() !void {
                     }
                 }
             }
+
+            for (&invaders) |*row| {
+                for (row) |*invader| {
+                    if (invader.alive) {
+                        if (invader.getRect().intersects(player.getRect())) {
+                            game_over = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        var all_invaders_dead = true;
+        outer_loop: for (&invaders) |*row| {
+            for (row) |*invader| {
+                if (invader.alive) {
+                    all_invaders_dead = false;
+                    break :outer_loop;
+                }
+            }
+        }
+
+        if (all_invaders_dead) {
+            game_won = true;
         }
 
         player.draw();
