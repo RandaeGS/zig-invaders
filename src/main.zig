@@ -238,9 +238,49 @@ const EnemyBullet = struct {
     }
 };
 
+const Shield = struct {
+    position_x: f32,
+    position_y: f32,
+    width: f32,
+    height: f32,
+    health: i32,
+
+    pub fn init(position_x: f32, position_y: f32, width: f32, height: f32) @This() {
+        return .{
+            .position_x = position_x,
+            .position_y = position_y,
+            .width = width,
+            .height = height,
+            .health = 10,
+        };
+    }
+
+    pub fn getRect(self: @This()) Rectangle {
+        return .{
+            .x = self.position_x,
+            .y = self.position_y,
+            .width = self.width,
+            .height = self.height,
+        };
+    }
+
+    pub fn draw(self: @This()) void {
+        if (self.health > 0) {
+            const alpha = @as(u8, @intCast(@min(255, self.health * 25)));
+            rl.drawRectangle(
+                @intFromFloat(self.position_x),
+                @intFromFloat(self.position_y),
+                @intFromFloat(self.width),
+                @intFromFloat(self.height),
+                rl.Color{ .r = 0, .g = 255, .b = 255, .a = alpha },
+            );
+        }
+    }
+};
+
 pub fn main() !void {
     const screenWidth = 800;
-    const screenHeight = 450;
+    const screenHeight = 600;
 
     const invaderRows = 5;
     const invaderCols = 11;
@@ -260,6 +300,13 @@ pub fn main() !void {
     const enemyShootChance = 5;
     var enemy_shoot_timer: i32 = 0;
 
+    const shieldCount = 4;
+    const shieldWidth = 80.0;
+    const shieldHeight = 60.0;
+    const shieldStartX = 150.0;
+    const shieldY = 450.0;
+    const shieldSpacing = 150.0;
+
     const maxBullets = 10;
     const maxEnemyBullets = 10;
     const bulletWidth = 4.0;
@@ -276,6 +323,12 @@ pub fn main() !void {
     var enemy_bullets: [maxEnemyBullets]EnemyBullet = undefined;
     for (&enemy_bullets) |*bullet| {
         bullet.* = EnemyBullet.init(0, 0, bulletWidth, bulletHeight);
+    }
+
+    var shields: [shieldCount]Shield = undefined;
+    for (&shields, 0..) |*shield, i| {
+        const x = shieldStartX + @as(f32, @floatFromInt(i)) * shieldSpacing;
+        shield.* = Shield.init(x, shieldY, shieldWidth, shieldHeight);
     }
 
     var invaders: [invaderRows][invaderCols]Invader = undefined;
@@ -352,14 +405,36 @@ pub fn main() !void {
                         }
                     }
                 }
+
+                for (&shields) |*shield| {
+                    if (shield.health > 0) {
+                        if (bullet.getRect().intersects(shield.getRect())) {
+                            bullet.active = false;
+                            shield.health -= 1;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
         for (&enemy_bullets) |*bullet| {
             bullet.update(screenHeight);
-            if (bullet.active and bullet.getRect().intersects(player.getRect())) {
-                bullet.active = false;
-                game_over = true;
+            if (bullet.active) {
+                if (bullet.getRect().intersects(player.getRect())) {
+                    bullet.active = false;
+                    game_over = true;
+                }
+
+                for (&shields) |*shield| {
+                    if (shield.health > 0) {
+                        if (bullet.getRect().intersects(shield.getRect())) {
+                            bullet.active = false;
+                            shield.health -= 1;
+                            break;
+                        }
+                    }
+                }
             }
         }
         enemy_shoot_timer += 1;
@@ -429,6 +504,10 @@ pub fn main() !void {
 
         for (&enemy_bullets) |*bullet| {
             bullet.draw();
+        }
+
+        for (&shields) |*shield| {
+            shield.draw();
         }
 
         const scoreText = rl.textFormat("Score: %d", .{score});
